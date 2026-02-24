@@ -1,3 +1,9 @@
+<div align="center">
+
+<h1 style="font-family:'Orbitron', monospace; color:#00ffea; animation:scroll 8s linear infinite; white-space:nowrap;">
+🌋𝐋𝐀𝐒𝐄𝐑-𝐌𝐃🌋
+</h1>
+
 # LASER-MD
 𝐋𝐀𝐒𝐄𝐑-𝐌𝐃
 𝐂𝐑𝐄𝐀𝐓𝐄 𝐘𝐎𝐔𝐑 𝐎𝐖𝐍𝐄𝐑 𝐁𝐎𝐓
