@@ -4,6 +4,8 @@
 🌋𝐋𝐀𝐒𝐄𝐑-𝐌𝐃🌋
 </h1>
 
+<img src="https://files.catbox.moe/jwud0d.jpg" width="160" style="border-radius:20px; box-shadow:0 0 40px #00ffea;" />
+
 # LASER-MD
 𝐋𝐀𝐒𝐄𝐑-𝐌𝐃
 𝐂𝐑𝐄𝐀𝐓𝐄 𝐘𝐎𝐔𝐑 𝐎𝐖𝐍𝐄𝐑 𝐁𝐎𝐓
