@@ -151,10 +151,9 @@ async function videoCommand(sock, chatId, message) {
             video: { url: videoData.download || videoData.dl || videoData.url },
             mimetype: 'video/mp4',
             fileName: `${(videoData.title || videoTitle || 'video').replace(/[^\w\s-]/g, '')}.mp4`,
-            caption: `*${videoData.title || videoTitle || 'Video'}*\n\n> *_Downloaded by Knight Bot MD_*`
+            caption: `*${videoData.title || videoTitle || 'Video'}*\n\n> *_Downloaded by laser md_*`
         }, { quoted: message });
-
-
+        
     } catch (error) {
         console.error('[VIDEO] Command Error:', error?.message || error);
         
