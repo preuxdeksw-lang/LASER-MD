@@ -88,8 +88,8 @@ async function helpCommand(sock, chatId, message) {
             forwardingScore: 1,
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
-                newsletterJid: 'add your newsletterJid',
-                newsletterName: 'add your bot name Updates',
+                newsletterJid: '120363407561123100@newsletter',
+                newsletterName: 'LASER MD',
                 serverMessageId: -1
             }
         };
