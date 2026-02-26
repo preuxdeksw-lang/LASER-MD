@@ -6,11 +6,11 @@ const path = require('path');
 
 async function githubCommand(sock, chatId, message) {
   try {
-    const res = await fetch('add your api github');
+    const res = await fetch('https://api.github.com/repos/TECHGOAT333/LASER-MD');
     if (!res.ok) throw new Error('Error fetching repository data');
     const json = await res.json();
 
-    let txt = `*☆  add your name bot  ☆*\n\n`;
+    let txt = `*☆  LASER-MD  ☆*\n\n`;
     txt += `✩  *Name* : ${json.name}\n`;
     txt += `✩  *Watchers* : ${json.watchers_count}\n`;
     txt += `✩  *Size* : ${(json.size / 1024).toFixed(2)} MB\n`;
