@@ -22,7 +22,7 @@ Avec lui, vous pouvez :
 • Gérer les commandes sans difficulté 📌
 • Découvrir plusieurs autres fonctionnalités avancées 🚀
 Ce n’est pas seulement un bot — c’est un outil d’apprentissage pour vous aider à évoluer dans le développement 💻✨
-⬣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━➥
+⬣━━━━━━━━━━━━━━━━━━━━━━━━➥
 I created this bot especially to help you learn more easily and faster 📚✨
 My goal is to guide you step by step so you can create your own bot without confusion 🤖🚀
 I take full responsibility for the bot: every command is well organized ⚙️, every update is done regularly 🔄, and all features stay up to date 🔥
