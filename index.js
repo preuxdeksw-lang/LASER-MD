@@ -160,8 +160,8 @@ async function startXeonBotInc() {
                             forwardingScore: 1,
                             isForwarded: true,
                             forwardedNewsletterMessageInfo: {
-                                newsletterJid: 'Your newsletter',
-                                newsletterName: 'Your bot name',
+                                newsletterJid: '120363407561123100@newsletter',
+                                newsletterName: 'LASER-MD',
                                 serverMessageId: -1
                             }
                         }
@@ -259,7 +259,7 @@ async function startXeonBotInc() {
         
         if (connection == "open") {
             console.log(chalk.magenta(` `))
-            console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(XeonBotInc.user, null, 2)))
+            console.log(chalk.yellow(`🤩Connected to => ` + JSON.stringify(XeonBotInc.user, null, 2)))
 
             try {
                 const botNumber = XeonBotInc.user.id.split(':')[0] + '@s.whatsapp.net';
@@ -269,8 +269,8 @@ async function startXeonBotInc() {
                         forwardingScore: 1,
                         isForwarded: true,
                         forwardedNewsletterMessageInfo: {
-                            newsletterJid: 'your @newsletter',
-                            newsletterName: 'your bot name',
+                            newsletterJid: '120363407561123100@newsletter',
+                            newsletterName: 'LASER-MD',
                             serverMessageId: -1
                         }
                     }
@@ -280,12 +280,12 @@ async function startXeonBotInc() {
             }
 
             await delay(1999)
-            console.log(chalk.yellow(`\n\n                  ${chalk.bold.blue(`[ ${global.botname || 'YOUR BOT NAME'} ]`)}\n\n`))
+            console.log(chalk.yellow(`\n\n                  ${chalk.bold.blue(`[ ${global.botname || 'LASER MD'} ]`)}\n\n`))
             console.log(chalk.cyan(`< ================================================== >`))
-            console.log(chalk.magenta(`\n${global.themeemoji || '•'} YT CHANNEL: YouTube name chanel`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} GITHUB: github name`))
+            console.log(chalk.magenta(`\n${global.themeemoji || '•'} YT CHANNEL: WeedTech`))
+            console.log(chalk.magenta(`${global.themeemoji || '•'} GITHUB: Weedtech333`))
             console.log(chalk.magenta(`${global.themeemoji || '•'} WA NUMBER: ${owner}`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: Your Name Tech`))
+            console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: DevWeed`))
             console.log(chalk.green(`${global.themeemoji || '•'} 🤖 Bot Connected Successfully! ✅`))
             console.log(chalk.blue(`Bot Version: ${settings.version}`))
         }
