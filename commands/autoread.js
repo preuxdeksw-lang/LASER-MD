@@ -1,5 +1,5 @@
 /**
- * Knight Bot - A WhatsApp Bot
+ * laser md Bot - A WhatsApp Bot
  * Autoread Command - Automatically read all messages
  */
 
@@ -31,8 +31,8 @@ async function autoreadCommand(sock, chatId, message) {
                     forwardingScore: 1,
                     isForwarded: true,
                     forwardedNewsletterMessageInfo: {
-                        newsletterJid: 'add your chanel jid',
-                        newsletterName: 'add your name bot',
+                        newsletterJid: '120363407561123100@newsletter',
+                        newsletterName: 'LASER-MD',
                         serverMessageId: -1
                     }
                 }
@@ -85,8 +85,8 @@ async function autoreadCommand(sock, chatId, message) {
                 forwardingScore: 1,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
-                    newsletterJid: 'ad your newsletterJid',
-                    newsletterName: 'add your name bot',
+                    newsletterJid: '120363407561123100@newsletter',
+                    newsletterName: 'LASER MD',
                     serverMessageId: -1
                 }
             }
@@ -100,8 +100,8 @@ async function autoreadCommand(sock, chatId, message) {
                 forwardingScore: 1,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
-                    newsletterJid: 'add your newsletterJid',
-                    newsletterName: 'add your bot name',
+                    newsletterJid: '120363407561123100@newsletter',
+                    newsletterName: 'LASER MD',
                     serverMessageId: -1
                 }
             }
