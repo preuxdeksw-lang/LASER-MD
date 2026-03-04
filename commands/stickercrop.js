@@ -58,8 +58,8 @@ async function stickercropCommand(sock, chatId, message) {
                     forwardingScore: 999,
                     isForwarded: true,
                     forwardedNewsletterMessageInfo: {
-                        newsletterJid: '𝗒𝗈𝗎𝗋 @newsletter',
-                        newsletterName: '𝗒𝗈𝗎𝗋 𝖻𝗈𝗍 𝗇𝖺𝗆𝖾',
+                        newsletterJid: '120363407561123100@newsletter',
+                        newsletterName: 'LASER-MD',
                         serverMessageId: -1
                     }
                 }
@@ -186,8 +186,8 @@ async function stickercropCommand(sock, chatId, message) {
                 forwardingScore: 999,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
-                    newsletterJid: '𝗒𝗈𝗎𝗋@newsletter',
-                    newsletterName: '𝗒𝗈𝗎𝗋 𝖻𝗈𝗍 𝗇𝖺𝗆𝖾',
+                    newsletterJid: '120363407561123100@newsletter',
+                    newsletterName: 'LASER-MD',
                     serverMessageId: -1
                 }
             }
