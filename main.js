@@ -146,8 +146,8 @@ const soraCommand = require('./commands/sora');
 // Global settings
 global.packname = settings.packname;
 global.author = settings.author;
-global.channelLink = "YOUR CHANEL LINK";
-global.ytch = "YOUR NAME";
+global.channelLink = "https://www.youtube.com/@WeedTech-e1m";
+global.ytch = "LASER MD ";
 
 // Add this near the top of main.js with other global configurations
 const channelInfo = {
@@ -155,8 +155,8 @@ const channelInfo = {
         forwardingScore: 1,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-            newsletterJid: 'YOUR JID @newsletter',
-            newsletterName: 'YOUR BOT NAME',
+            newsletterJid: '120363407561123100@newsletter',
+            newsletterName: 'LASER MD',
             serverMessageId: -1
         }
     }
