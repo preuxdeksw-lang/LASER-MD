@@ -147,7 +147,7 @@ const soraCommand = require('./commands/sora');
 global.packname = settings.packname;
 global.author = settings.author;
 global.channelLink = "https://www.youtube.com/@WeedTech-e1m";
-global.ytch = "LASER MD ";
+global.ytch = "WeedTech";
 
 // Add this near the top of main.js with other global configurations
 const channelInfo = {
