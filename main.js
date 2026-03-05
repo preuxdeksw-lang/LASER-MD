@@ -142,6 +142,7 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
+const setprefixCommand = require('./commands/setprefix');
 
 // Global settings
 global.packname = settings.packname;
