@@ -434,7 +434,6 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
-const pinterestCommand = require('./commands/pinterest');
 
 // Global settings
 global.packname = settings.packname;
