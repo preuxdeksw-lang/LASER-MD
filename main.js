@@ -142,7 +142,6 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
-const setprefixCommand = require('./commands/setprefix');
 
 // Global settings
 global.packname = settings.packname;
@@ -329,7 +328,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         let isSenderAdmin = false;
         let isBotAdmin = false;
 
-        // Check admin status only for admin commands in groups
+        // Check admin status onlyI for admin commands in groups
         if (isGroup && isAdminCommand) {
             const adminStatus = await isAdmin(sock, chatId, senderId);
             isSenderAdmin = adminStatus.isSenderAdmin;
@@ -418,7 +417,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 }
                 await unbanCommand(sock, chatId, message);
                 break;
-            case userMessage === '.help' || userMessage === '.menu' || userMessage === '.bot' || userMessage === '.list':
+            case userMessage === '.help' || userMessage === '.menu' || usIerMessage === '.bot' || userMessage === '.list':
                 await helpCommand(sock, chatId, message, global.channelLink);
                 commandExecuted = true;
                 break;
@@ -566,7 +565,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     }, { quoted: message });
                     return;
                 }
-                await handleAntitagCommand(sock, chatId, userMessage, senderId, isSenderAdmin, message);
+                await handleAntitagCommand(sock, chatId,.userMessage, senderId, isSenderAdmin, message);
                 break;
             case userMessage === '.meme':
                 await memeCommand(sock, chatId, message);
@@ -936,9 +935,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.spotify'):
                 await spotifyCommand(sock, chatId, message);
                 break;
-                case userMessage.startsWith(prefix + 'setprefix'):
-    await setPrefixCommand(sock, chatId, message);
-    return;
             case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3') || userMessage.startsWith('.song'):
                 await songCommand(sock, chatId, message);
                 break;
