@@ -74,10 +74,6 @@ const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./comman
 
 // Command imports
 const tagAllCommand = require('./commands/tagall');
-
-const apkCommand = require('./commands/apk');
-const apkdlCommand = require('./commands/apkdl');
-const antiMentionCommand = require('./commands/antimention');
 const setPrefixCommand = require('./commands/setprefix');
 const helpCommand = require('./commands/help');
 const banCommand = require('./commands/ban');
