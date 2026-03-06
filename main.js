@@ -1,4 +1,3 @@
-// 🧹 Fix for ENOSPC / temp overflow in hosted panels
 const fs = require('fs');
 const path = require('path');
 
@@ -9,7 +8,7 @@ process.env.TMPDIR = customTemp;
 process.env.TEMP = customTemp;
 process.env.TMP = customTemp;
 
-// Auto-cleaner every 3 hours
+// Auto-cleaner 
 setInterval(() => {
     fs.readdir(customTemp, (err, files) => {
         if (err) return;
@@ -26,6 +25,40 @@ setInterval(() => {
 }, 3 * 60 * 60 * 1000);
 
 const settings = require('./settings');
+// --- Dynamic prefix reader 
+function readPrefixFromSettingsFile() {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const settingsPath = path.join(__dirname, 'settings.js');
+        if (!fs.existsSync(settingsPath)) return '.';
+        const content = fs.readFileSync(settingsPath, 'utf8');
+
+        // 1) direct: module.exports.prefix = '...';
+      
+        const line = content.match(/module\.exports\.prefix\s*=\s*([^\n\r;]+)[;\n\r]/);
+        if (line && line[1]) {
+            const rhs = String(line[1]).trim();
+            // If RHS is a quoted string literal
+            const lit = rhs.match(/^(['"`])([\s\S]*?)\1$/);
+            if (lit && lit[2]) return String(lit[2]).trim();
+
+            // If RHS is an expression
+            const allLits = [...rhs.matchAll(/(['"`])([\s\S]*?)\1/g)].map(x => x[2]);
+            if (allLits.length) return String(allLits[allLits.length - 1]).trim();
+        }
+
+        // 2) object style: prefix: '...'
+        const m2 = content.match(/\bprefix\s*:\s*(['"`])([\s\S]*?)\1/);
+        if (m2 && m2[2]) return String(m2[2]).trim();
+
+        return '.';
+    } catch (e) {
+        return '.';
+    }
+}
+const prefix = '.'; // internal router prefix (do not change)
+
 require('./config.js');
 const { isBanned } = require('./lib/isBanned');
 const yts = require('yt-search');
@@ -41,6 +74,11 @@ const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./comman
 
 // Command imports
 const tagAllCommand = require('./commands/tagall');
+
+const apkCommand = require('./commands/apk');
+const apkdlCommand = require('./commands/apkdl');
+const antiMentionCommand = require('./commands/antimention');
+const setPrefixCommand = require('./commands/setprefix');
 const helpCommand = require('./commands/help');
 const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
@@ -118,6 +156,264 @@ const facebookCommand = require('./commands/facebook');
 const spotifyCommand = require('./commands/spotify');
 const playCommand = require('./commands/play');
 const tiktokCommand = require('./commands/tiktok');
+
+
+// =====================================================
+// TikTok (liste + choix 1/2/3) — INFINIX•MD (FR)
+// Usage:
+// 1) .tiktok <lien>
+// 2) .tiktok 1 / 2 / 3  (après la liste)
+// =====================================================
+const tiktokCache = new Map(); // chatId -> { links, info, expiresAt }
+
+function _ttIsUrl(u) {
+    return typeof u === "string" && /^https?:\/\/\S+/i.test(u.trim());
+}
+function _ttCleanUrl(u) {
+    if (!_ttIsUrl(u)) return null;
+    return u.trim().replace(/\s+/g, "");
+}
+function _ttFormat(v) {
+    if (v === undefined || v === null) return "N/A";
+    return String(v);
+}
+
+async function _ttGetJson(url) {
+    return axios.get(url, {
+        timeout: 25000,
+        headers: {
+            accept: "application/json, text/plain, */*",
+            "user-agent": "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        },
+        validateStatus: () => true
+    });
+}
+
+async function _ttFetchTeleSocial(tiktokUrl) {
+    const api = `https://tele-social.vercel.app/down?url=${encodeURIComponent(tiktokUrl)}`;
+    const res = await _ttGetJson(api);
+
+    if (res.status < 200 || res.status >= 300) {
+        return { ok: false, reason: `HTTP ${res.status}` };
+    }
+
+    const root = res.data || {};
+    const statut = root?.statut === true || root?.statut === "vrai" || root?.status === true || root?.success === true;
+    const dataObj = root?.données || root?.donnees || root?.data || root?.result;
+
+    if (!statut || !dataObj) {
+        return { ok: false, reason: root?.message || root?.error || "données introuvables / statut false" };
+    }
+
+    const medias =
+        dataObj?.méta?.médias ||
+        dataObj?.meta?.medias ||
+        dataObj?.meta?.médias ||
+        dataObj?.méta?.medias ||
+        [];
+
+    const m0 = Array.isArray(medias) ? (medias[0] || {}) : (medias || {});
+
+    const links = {
+        org: _ttCleanUrl(m0?.org),
+        wm: _ttCleanUrl(m0?.wm),
+        hd: _ttCleanUrl(m0?.hd)
+    };
+
+    if (!links.org && !links.wm && !links.hd) {
+        return { ok: false, reason: "aucun lien vidéo (org/wm/hd) dans la réponse" };
+    }
+
+    const info = {
+        title: dataObj?.title || "Vidéo TikTok",
+        authorNick: dataObj?.auteur?.["surnom"] || dataObj?.auteur?.nickname || "N/A",
+        authorUser: dataObj?.auteur?.["nom d'utilisateur"] || dataObj?.auteur?.username || "N/A",
+        likes: dataObj?.like,
+        comments: dataObj?.commentaire,
+        shares: dataObj?.part,
+        views: dataObj?.repro,
+        published: dataObj?.publié,
+        sizes: { org: m0?.size_org, wm: m0?.size_wm, hd: m0?.size_hd }
+    };
+
+    return { ok: true, provider: "tele-social", info, links };
+}
+
+async function _ttFetchTikwmFallback(tiktokUrl) {
+    const api = `https://www.tikwm.com/api/?url=${encodeURIComponent(tiktokUrl)}&hd=1`;
+    const res = await _ttGetJson(api);
+
+    if (res.status < 200 || res.status >= 300) {
+        return { ok: false, reason: `TikWM HTTP ${res.status}` };
+    }
+
+    const root = res.data || {};
+    if (root.code !== 0 || !root.data) {
+        return { ok: false, reason: root?.msg || "TikWM: réponse invalide" };
+    }
+
+    const d = root.data;
+    const links = {
+        org: _ttCleanUrl(d?.play),
+        wm: _ttCleanUrl(d?.wmplay),
+        hd: _ttCleanUrl(d?.hdplay)
+    };
+
+    if (!links.org && !links.wm && !links.hd) {
+        return { ok: false, reason: "TikWM: aucun lien vidéo" };
+    }
+
+    const info = {
+        title: d?.title || "Vidéo TikTok",
+        authorNick: d?.author?.nickname || "N/A",
+        authorUser: d?.author?.unique_id ? `@${d.author.unique_id}` : "N/A",
+        likes: d?.digg_count,
+        comments: d?.comment_count,
+        shares: d?.share_count,
+        views: d?.play_count,
+        published: d?.create_time ? new Date(d.create_time * 1000).toLocaleDateString("fr-FR") : "N/A",
+        sizes: { org: null, wm: null, hd: null }
+    };
+
+    return { ok: true, provider: "tikwm", info, links };
+}
+
+function _ttBuildListMessage(info, links) {
+    const authorLine = `${info.authorNick || "N/A"} (${info.authorUser || "N/A"})`;
+
+    const line1 = links.org ? `1️⃣ 📼 Vidéo ORG${info.sizes?.org ? ` (${info.sizes.org})` : ""}` : `1️⃣ 📼 Vidéo ORG (indispo)`;
+    const line2 = links.wm ? `2️⃣ 💧 Vidéo WM${info.sizes?.wm ? ` (${info.sizes.wm})` : ""}` : `2️⃣ 💧 Vidéo WM (indispo)`;
+    const line3 = links.hd ? `3️⃣ ⚡ Vidéo HD${info.sizes?.hd ? ` (${info.sizes.hd})` : ""}` : `3️⃣ ⚡ Vidéo HD (indispo)`;
+
+    return (
+`╭━━━〔 🎥 TIKTOK 〕━━━╮
+┃ 👤 Auteur : \`${authorLine}\`
+┃ ❤️ Likes : \`${_ttFormat(info.likes)}\`
+┃ 💬 Com : \`${_ttFormat(info.comments)}\`
+┃ 🔁 Part : \`${_ttFormat(info.shares)}\`
+┃ 👁️ Vues : \`${_ttFormat(info.views)}\`
+┃ 📅 Publié : \`${_ttFormat(info.published)}\`
+╰━━━━━━━━━━━━━━━━━━━━╯
+
+📝 *Titre :*
+${info.title || "—"}
+
+📎 *Choisis une qualité :*
+${line1}
+${line2}
+${line3}
+
+➡️ Réponds avec : *.tiktok 1* | *.tiktok 2* | *.tiktok 3*
+
+✨ INFINIX•MD
+> BY REBELLE MASQUE`
+    );
+}
+
+async function handleTikTokCommand(sock, chatId, message) {
+    const text =
+        message.message?.conversation ||
+        message.message?.extendedTextMessage?.text ||
+        "";
+
+    const args = text.split(" ").slice(1).filter(Boolean);
+    const arg = (args[0] || "").trim();
+
+    // Réaction start
+    try { await sock.sendMessage(chatId, { react: { text: "🔄", key: message.key } }); } catch {}
+
+    // Si l'utilisateur répond avec 1/2/3
+    if (/^[123]$/.test(arg)) {
+        const cached = tiktokCache.get(chatId);
+        if (!cached || Date.now() > cached.expiresAt) {
+            tiktokCache.delete(chatId);
+            try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+            return sock.sendMessage(chatId, {
+                text: "❌ Aucun choix en attente.\n✅ Fais d’abord : *.tiktok <lien>*",
+                ...channelInfo
+            }, { quoted: message });
+        }
+
+        const choice = Number(arg);
+        const link = choice === 1 ? cached.links.org : choice === 2 ? cached.links.wm : cached.links.hd;
+
+        if (!link) {
+            try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+            return sock.sendMessage(chatId, {
+                text: "❌ Cette qualité est indisponible pour ce lien.\n✅ Essaie une autre option (1/2/3).",
+                ...channelInfo
+            }, { quoted: message });
+        }
+
+        const qualityLabel = choice === 1 ? "ORG" : choice === 2 ? "WM" : "HD";
+        const caption =
+`✅ *Téléchargement TikTok*
+🎞️ Qualité : *${qualityLabel}*
+📝 ${cached.info?.title ? cached.info.title : ""}
+
+✨ INFINIX•MD
+> BY REBELLE MASQUE`.trim();
+
+        try {
+            await sock.sendMessage(chatId, {
+                video: { url: link },
+                mimetype: "video/mp4",
+                caption,
+                ...channelInfo
+            }, { quoted: message });
+
+            try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
+            return;
+        } catch (e) {
+            console.error("TikTok send video error:", e?.message || e);
+            try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+            return sock.sendMessage(chatId, {
+                text: "❌ Impossible d’envoyer la vidéo (lien expiré ou trop lourd).\n✅ Réessaie : *.tiktok <lien>*",
+                ...channelInfo
+            }, { quoted: message });
+        }
+    }
+
+    // Sinon: c'est un lien
+    const url = args.join(" ").trim();
+    if (!url || !_ttIsUrl(url)) {
+        try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+        return sock.sendMessage(chatId, {
+            text: "❌ Donne un lien TikTok.\n✅ Exemple : *.tiktok https://vm.tiktok.com/XXXX*",
+            ...channelInfo
+        }, { quoted: message });
+    }
+
+    // 1) Tele-social
+    let result = await _ttFetchTeleSocial(url);
+
+    // fallback TikWM
+    if (!result.ok) {
+        result = await _ttFetchTikwmFallback(url);
+    }
+
+    if (!result.ok) {
+        try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+        return sock.sendMessage(chatId, {
+            text: `❌ API erreur: ${result.reason || "données introuvables / statut false"}.\nRéessaie.`,
+            ...channelInfo
+        }, { quoted: message });
+    }
+
+    // cache 10 minutes
+    tiktokCache.set(chatId, {
+        links: result.links,
+        info: result.info,
+        expiresAt: Date.now() + 10 * 60 * 1000
+    });
+
+    const msg = _ttBuildListMessage(result.info, result.links);
+
+    await sock.sendMessage(chatId, { text: msg, ...channelInfo }, { quoted: message });
+
+    try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
+}
+
 const songCommand = require('./commands/song');
 const aiCommand = require('./commands/ai');
 const urlCommand = require('./commands/url');
@@ -142,12 +438,13 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
+const pinterestCommand = require('./commands/pinterest');
 
 // Global settings
 global.packname = settings.packname;
 global.author = settings.author;
-global.channelLink = "https://www.youtube.com/@WeedTech-e1m";
-global.ytch = "WeedTech";
+global.channelLink = "https://whatsapp.com/channel/0029VbCBdVzE50UZNpbYsn0d";
+global.ytch = "rebelle masque";
 
 // Add this near the top of main.js with other global configurations
 const channelInfo = {
@@ -155,8 +452,8 @@ const channelInfo = {
         forwardingScore: 1,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363407561123100@newsletter',
-            newsletterName: 'LASER MD',
+            newsletterJid: '120363403933773291@newsletter',
+            newsletterName: '𝐈𝐍𝐅𝐈𝐍𝐈𝐗•𝐌𝐃',
             serverMessageId: -1
         }
     }
@@ -187,7 +484,54 @@ async function handleMessages(sock, messageUpdate, printLog) {
         const chatId = message.key.remoteJid;
         const senderId = message.key.participant || message.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
-        const senderIsSudo = await isSudo(senderId);
+
+        // ANTI-MENTION (auto delete) - suppression des mentions de masse
+        try {
+            const { getAntimention } = require('./lib/index');
+            const enabled = !!(await getAntimention(chatId, 'on'));
+            if (enabled && isGroup) {
+                // Collect mentions from several message types
+                const ctx =
+                    message.message?.extendedTextMessage?.contextInfo ||
+                    message.message?.imageMessage?.contextInfo ||
+                    message.message?.videoMessage?.contextInfo ||
+                    message.message?.documentMessage?.contextInfo ||
+                    message.message?.conversation?.contextInfo ||
+                    null;
+
+                const mentioned = ctx?.mentionedJid || [];
+                const threshold = Number(settings.antiMention?.threshold ?? 5);
+
+                if (Array.isArray(mentioned) && mentioned.length >= threshold) {
+                    const adminBypass = settings.antiMention?.adminBypass ?? true;
+
+                    let senderIsAdmin = false;
+                    if (adminBypass) {
+                        const adminStatus = await isAdmin(sock, chatId, senderId);
+                        senderIsAdmin = !!adminStatus?.isSenderAdmin;
+                    }
+
+                    if (!senderIsAdmin) {
+                        // Delete the message
+                        await sock.sendMessage(chatId, {
+                            delete: { remoteJid: chatId, fromMe: false, id: message.key.id, participant: senderId }
+                        }).catch(() => {});
+
+                        // Warn the sender
+                        await sock.sendMessage(chatId, {
+                            text: `⚠️ *Anti-mention activé*
+
+❌ Mention de masse détectée (${mentioned.length}).
+Merci d'éviter de mentionner tout le monde.`,
+                            contextInfo: channelInfo.contextInfo
+                        }, { quoted: message }).catch(() => {});
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('ANTI-MENTION error:', e);
+        }
+const senderIsSudo = await isSudo(senderId);
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
 
         // Handle button responses
@@ -212,24 +556,33 @@ async function handleMessages(sock, messageUpdate, printLog) {
             }
         }
 
-        const userMessage = (
-            message.message?.conversation?.trim() ||
-            message.message?.extendedTextMessage?.text?.trim() ||
-            message.message?.imageMessage?.caption?.trim() ||
-            message.message?.videoMessage?.caption?.trim() ||
-            message.message?.buttonsResponseMessage?.selectedButtonId?.trim() ||
-            ''
-        ).toLowerCase().replace(/\.\s+/g, '.').trim();
+        // Preserve raw message for commands and prefix detection
+const rawText = (
+    message.message?.conversation?.trim() ||
+    message.message?.extendedTextMessage?.text?.trim() ||
+    message.message?.imageMessage?.caption?.trim() ||
+    message.message?.videoMessage?.caption?.trim() ||
+    message.message?.buttonsResponseMessage?.selectedButtonId?.trim() ||
+    ''
+).trim();
 
-        // Preserve raw message for commands like .tag that need original casing
-        const rawText = message.message?.conversation?.trim() ||
-            message.message?.extendedTextMessage?.text?.trim() ||
-            message.message?.imageMessage?.caption?.trim() ||
-            message.message?.videoMessage?.caption?.trim() ||
-            '';
+// ✅ Dynamic prefix support (emoji/flags/etc.) without breaking existing command router:
+// We normalize any configured prefix to '.' internally, so the rest of the code keeps working.
+const configuredPrefix = readPrefixFromSettingsFile() || settings?.prefix || '.';
+const prefixList = Array.isArray(configuredPrefix) ? configuredPrefix : [configuredPrefix];
 
-        // Only log command usage
-        if (userMessage.startsWith('.')) {
+// Find which prefix the user used
+const usedPrefix = prefixList.find(p => p && rawText.startsWith(p));
+
+// If user used a configured prefix, normalize it to '.' for internal processing
+const normalizedText = usedPrefix ? ('.' + rawText.slice(usedPrefix.length)) : rawText;
+
+const userMessage = normalizedText
+    .toLowerCase()
+    .replace(/\.\s+/g, '.')
+    .trim();
+// Only log command usage
+        if (usedPrefix && userMessage.startsWith('.')) {
             console.log(`📝 Command used in ${isGroup ? 'group' : 'private'}: ${userMessage}`);
         }
         // Read bot mode once; don't early-return so moderation can still run in private mode
@@ -296,7 +649,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
 
         // Then check for command prefix
-        if (!userMessage.startsWith('.')) {
+        if (!userMessage.startsWith('.') || !usedPrefix) {
             // Show typing indicator if autotyping is enabled
             await handleAutotypingForMessage(sock, chatId, userMessage);
 
@@ -318,7 +671,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
 
         // List of admin commands
-        const adminCommands = ['.mute', '.unmute', '.ban', '.unban', '.promote', '.demote', '.kick', '.tagall', '.tagnotadmin', '.hidetag', '.antilink', '.antitag', '.setgdesc', '.setgname', '.setgpp'];
+        const adminCommands = ['.close', '.open', '.ban', '.unban', '.promote', '.demote', '.kick', '.tagall', '.tagnotadmin', '.hidetag', '.antilink', '.antitag', '.setgdesc', '.setgname', '.setgpp'];
         const isAdminCommand = adminCommands.some(cmd => userMessage.startsWith(cmd));
 
         // List of owner commands
@@ -328,7 +681,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         let isSenderAdmin = false;
         let isBotAdmin = false;
 
-        // Check admin status onlyI for admin commands in groups
+        // Check admin status only for admin commands in groups
         if (isGroup && isAdminCommand) {
             const adminStatus = await isAdmin(sock, chatId, senderId);
             isSenderAdmin = adminStatus.isSenderAdmin;
@@ -340,6 +693,8 @@ async function handleMessages(sock, messageUpdate, printLog) {
             }
 
             if (
+                userMessage.startsWith('.close') ||
+                userMessage === '.open' ||
                 userMessage.startsWith('.mute') ||
                 userMessage === '.unmute' ||
                 userMessage.startsWith('.ban') ||
@@ -375,7 +730,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 if (quotedMessage?.stickerMessage) {
                     await simageCommand(sock, quotedMessage, chatId);
                 } else {
-                    await sock.sendMessage(chatId, { text: 'Please reply to a sticker with the .simage command to convert it.', ...channelInfo }, { quoted: message });
+                    await sock.sendMessage(chatId, { text: 'Veuillez répondre à un sticker avec la commande .simage pour le convertir en image.', ...channelInfo }, { quoted: message });
                 }
                 commandExecuted = true;
                 break;
@@ -384,20 +739,68 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 const mentionedJidListKick = message.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
                 await kickCommand(sock, chatId, senderId, mentionedJidListKick, message);
                 break;
+            case userMessage.startsWith('.close'):
             case userMessage.startsWith('.mute'):
                 {
                     const parts = userMessage.trim().split(/\s+/);
-                    const muteArg = parts[1];
-                    const muteDuration = muteArg !== undefined ? parseInt(muteArg, 10) : undefined;
-                    if (muteArg !== undefined && (isNaN(muteDuration) || muteDuration <= 0)) {
-                        await sock.sendMessage(chatId, { text: 'Please provide a valid number of minutes or use .mute with no number to mute immediately.', ...channelInfo }, { quoted: message });
+                    const arg = parts[1];
+
+                    const parseDurationMs = (input) => {
+                        if (!input) return undefined;
+                        const s = String(input).trim().toLowerCase();
+                        const match = s.match(/^(\d+)(s|sec|secs|m|min|mins)?$/i);
+                        if (!match) return null;
+                        const val = parseInt(match[1], 10);
+                        const unit = (match[2] || 'm').toLowerCase(); // minutes par défaut
+                        if (!Number.isFinite(val) || val <= 0) return null;
+                        if (unit === 's' || unit === 'sec' || unit === 'secs') return val * 1000;
+                        return val * 60 * 1000;
+                    };
+
+                    const durationMs = parseDurationMs(arg);
+
+                    if (arg !== undefined && durationMs === null) {
+                        await sock.sendMessage(
+                            chatId,
+                            { text: "❌ Durée invalide.\n✅ Exemples : *.close 2m* | *.close 30s* | *.close* (sans durée)", ...channelInfo },
+                            { quoted: message }
+                        );
                     } else {
-                        await muteCommand(sock, chatId, senderId, message, muteDuration);
+                        await muteCommand(sock, chatId, senderId, message, durationMs);
                     }
                 }
                 break;
+            case userMessage === '.open':
+            case userMessage === '.umute':
             case userMessage === '.unmute':
-                await unmuteCommand(sock, chatId, senderId);
+                {
+                const parts = userMessage.trim().split(/\s+/);
+                const arg = parts[1];
+
+                const parseDurationMs = (input) => {
+                    if (!input) return undefined;
+                    const s = String(input).trim().toLowerCase();
+                    const match = s.match(/^(\d+)(s|sec|secs|m|min|mins)?$/i);
+                    if (!match) return null;
+                    const val = parseInt(match[1], 10);
+                    const unit = (match[2] || 'm').toLowerCase(); // minutes par défaut
+                    if (!Number.isFinite(val) || val <= 0) return null;
+                    if (unit === 's' || unit === 'sec' || unit === 'secs') return val * 1000;
+                    return val * 60 * 1000;
+                };
+
+                const durationMs = parseDurationMs(arg);
+
+                if (arg !== undefined && durationMs === null) {
+                    await sock.sendMessage(
+                        chatId,
+                        { text: "❌ Durée invalide.\n✅ Exemples : *.open 2m* | *.open 30s* | *.open* (sans durée)", ...channelInfo },
+                        { quoted: message }
+                    );
+                } else {
+                    await unmuteCommand(sock, chatId, senderId, message, durationMs);
+                }
+            }
                 break;
             case userMessage.startsWith('.ban'):
                 if (!isGroup) {
@@ -417,7 +820,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 }
                 await unbanCommand(sock, chatId, message);
                 break;
-            case userMessage === '.help' || userMessage === '.menu' || usIerMessage === '.bot' || userMessage === '.list':
+            case userMessage === '.help' || userMessage === '.menu' || userMessage === '.bot' || userMessage === '.list':
+                try {
+                    if (userMessage === '.menu') {
+                        await sock.sendMessage(chatId, { react: { text: '🗂️', key: message.key } });
+                    }
+                } catch {}
                 await helpCommand(sock, chatId, message, global.channelLink);
                 commandExecuted = true;
                 break;
@@ -565,7 +973,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     }, { quoted: message });
                     return;
                 }
-                await handleAntitagCommand(sock, chatId,.userMessage, senderId, isSenderAdmin, message);
+                await handleAntitagCommand(sock, chatId, userMessage, senderId, isSenderAdmin, message);
                 break;
             case userMessage === '.meme':
                 await memeCommand(sock, chatId, message);
@@ -579,13 +987,20 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage === '.fact':
                 await factCommand(sock, chatId, message, message);
                 break;
+            case userMessage.startsWith('.meteo'):
+                const cityMeteo = userMessage.slice(7).trim();
+                await weatherCommand(sock, chatId, message, cityMeteo);
+                break;
             case userMessage.startsWith('.weather'):
                 const city = userMessage.slice(9).trim();
                 if (city) {
                     await weatherCommand(sock, chatId, message, city);
                 } else {
-                    await sock.sendMessage(chatId, { text: 'Please specify a city, e.g., .weather London', ...channelInfo }, { quoted: message });
+                    await sock.sendMessage(chatId, { text: 'Veuillez préciser une ville, ex : .meteo Abidjan', ...channelInfo }, { quoted: message });
                 }
+                break;
+            case userMessage === '.nouvelle':
+                await newsCommand(sock, chatId);
                 break;
             case userMessage === '.news':
                 await newsCommand(sock, chatId);
@@ -694,7 +1109,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage.startsWith('.welcome'):
                 if (isGroup) {
-                    // Check admin status if not already checked
+                    // 💯💯💯
                     if (!isSenderAdmin) {
                         const adminStatus = await isAdmin(sock, chatId, senderId);
                         isSenderAdmin = adminStatus.isSenderAdmin;
@@ -920,7 +1335,28 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.instagram') || userMessage.startsWith('.insta') || (userMessage === '.ig' || userMessage.startsWith('.ig ')):
                 await instagramCommand(sock, chatId, message);
                 break;
-            case userMessage.startsWith('.igsc'):
+            
+            case userMessage.startsWith(prefix + 'apk ') || userMessage === prefix + 'apk':
+                await apkCommand(sock, chatId, message);
+                return;
+
+            case userMessage.startsWith(prefix + 'apkdl ') || userMessage === prefix + 'apkdl':
+                await apkdlCommand(sock, chatId, message);
+                return;
+
+            case userMessage.startsWith(prefix + 'pinterest') || userMessage.startsWith(prefix + 'pin') || userMessage.startsWith(prefix + 'pindl') || userMessage.startsWith(prefix + 'pinterestdl'):
+                await pinterestCommand(sock, chatId, message);
+                return;
+
+            case userMessage.startsWith(prefix + 'antimention'):
+                await antiMentionCommand(sock, chatId, userMessage, senderId, isSenderAdmin, message);
+                return;
+
+            case userMessage.startsWith(prefix + 'setprefix'):
+                await setPrefixCommand(sock, chatId, message);
+                return;
+
+case userMessage.startsWith('.igsc'):
                 await igsCommand(sock, chatId, message, true);
                 break;
             case userMessage.startsWith('.igs'):
@@ -942,7 +1378,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 await videoCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.tiktok') || userMessage.startsWith('.tt'):
-                await tiktokCommand(sock, chatId, message);
+                await handleTikTokCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.gpt') || userMessage.startsWith('.gemini'):
                 await aiCommand(sock, chatId, message);
@@ -1252,14 +1688,14 @@ async function handleGroupParticipantUpdate(sock, update) {
 
         // Handle leave events
         if (action === 'remove') {
-            await handleLeaveEvent(sock, id, participants);
+            await handleLeaveEvent(sock, id, participants); I
         }
     } catch (error) {
         console.error('Error in handleGroupParticipantUpdate:', error);
     }
 }
 
-// Instead, export the handlers along with handleMessages
+//rebelle masque 💥 
 module.exports = {
     handleMessages,
     handleGroupParticipantUpdate,
