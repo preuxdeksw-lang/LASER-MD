@@ -155,7 +155,7 @@ const tiktokCommand = require('./commands/tiktok');
 
 
 // =====================================================
-// TikTok (liste + choix 1/2/3) — INFINIX•MD (FR)
+// TikTok (liste + choix 1/2/3) — )laser-MD (FR)
 // Usage:
 // 1) .tiktok <lien>
 // 2) .tiktok 1 / 2 / 3  (après la liste)
@@ -347,8 +347,8 @@ async function handleTikTokCommand(sock, chatId, message) {
 🎞️ Qualité : *${qualityLabel}*
 📝 ${cached.info?.title ? cached.info.title : ""}
 
-✨ INFINIX•MD
-> BY REBELLE MASQUE`.trim();
+✨ LASER-MD •MD
+> BY Dev Weed`.trim();
 
         try {
             await sock.sendMessage(chatId, {
@@ -439,7 +439,7 @@ const soraCommand = require('./commands/sora');
 global.packname = settings.packname;
 global.author = settings.author;
 global.channelLink = "https://whatsapp.com/channel/0029VbCBdVzE50UZNpbYsn0d";
-global.ytch = "rebelle masque";
+global.ytch = "WeedTech";
 
 // Add this near the top of main.js with other global configurations
 const channelInfo = {
@@ -447,8 +447,8 @@ const channelInfo = {
         forwardingScore: 1,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363403933773291@newsletter',
-            newsletterName: '𝐈𝐍𝐅𝐈𝐍𝐈𝐗•𝐌𝐃',
+            newsletterJid: '120363407561123100@newsletter',
+            newsletterName: '𝐋𝐀𝐒𝐄𝐑-𝐌𝐃',
             serverMessageId: -1
         }
     }
