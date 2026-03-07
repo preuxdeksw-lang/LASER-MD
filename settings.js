@@ -3,7 +3,7 @@ const settings = {
   author: '‎',
   botName: "𝐋𝐀𝐒𝐄𝐑 𝐌𝐃",
   botOwner: '𝙳𝙴𝚅𝚆𝙴𝙴𝙳', // Your name
-  ownerNumber: '50939032060', //Set your number here without + symbol, just add country code & number without any space
+  ownerNumber: '50934410653', //Set your number here without + symbol, just add country code & number without any space
   giphyApiKey: 'qnl7ssQChTdPjsKta2Ax2LMaGXz303tq',
   commandMode: "public",
   maxStoreMessages: 20, 
@@ -14,3 +14,6 @@ const settings = {
 };
 
 module.exports = settings;
+
+// ajouté vautre prefix setting
+module.exports.prefix = process.env.PREFIX || '.';
