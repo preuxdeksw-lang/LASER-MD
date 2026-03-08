@@ -14,6 +14,3 @@ const settings = {
 };
 
 module.exports = settings;
-
-// ajouté vautre prefix setting
-module.exports.prefix = process.env.PREFIX || '.';
